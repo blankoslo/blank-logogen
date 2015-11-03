@@ -1,12 +1,18 @@
 // Audio setup
+navigator.getUserMedia = (navigator.getUserMedia ||
+                          navigator.webkitGetUserMedia ||
+                          navigator.mozGetUserMedia ||
+                          navigator.msGetUserMedia);
+
+if (!navigator.getUserMedia) {
+    throw new Error("Browser doesn't support getUserMedia.");
+}
+
 var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 if (!audioCtx) {
     throw new Error("Browser doesn't support Web Audio API.");
 }
-
-var audioElement = document.getElementById("mp3");
-var source = audioCtx.createMediaElementSource(audioElement);
 
 var freqAnalyser = audioCtx.createAnalyser();
 freqAnalyser.fftSize = 2048;
@@ -20,7 +26,7 @@ var leftDataArray = new Uint8Array(leftAnalyser.frequencyBinCount);
 var rightAnalyser = audioCtx.createAnalyser();
 var rightDataArray = new Uint8Array(rightAnalyser.frequencyBinCount);
 
-function freqCutoff(type, freq) {
+function freqCutoff(type, freq, freqband) {
     switch (type) {
         case 'low':
             var nBins = Math.round(freq / hzPerBin);
@@ -31,6 +37,13 @@ function freqCutoff(type, freq) {
             var band = (audioCtx.sampleRate / 2) - freq;
             var nBins = Math.round(band / hzPerBin);
             var sum = freqDataArray.slice(-nBins).reduce((pv, cv) => pv + cv, 0);
+            return sum / nBins;
+
+        case 'band':
+            var nBins = Math.round((freqband - freq) / hzPerBin);
+            var firstBin = Math.floor(freq / hzPerBin);
+            var sum = freqDataArray.slice(firstBin, firstBin+nBins).reduce(
+                    (pv, cv) => cv < 100 ? pv : pv + cv, 0);
             return sum / nBins;
     }
 }
@@ -47,6 +60,8 @@ var unit = (len) => len * unitSz;
 // Visualization
 //var lowX = unit(130);
 //var highX = unit(130);
+var leftMax = 128;
+var rightMax = 128;
 function visualize() {
     //requestAnimationFrame(visualize);
 
@@ -61,7 +76,7 @@ function visualize() {
     freqAnalyser.getByteFrequencyData(freqDataArray);
 
     // Low freq viz
-    var lowFreq = freqCutoff('low', 100);
+    var lowFreq = freqCutoff('band', 0, 100);
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128 + 64));
     var lowX = unit(130) + unit(Math.random() * 128 - 64)
@@ -86,6 +101,8 @@ function visualize() {
     rightAnalyser.getByteFrequencyData(rightDataArray);
     var rightSum = rightDataArray.reduce((pv, cv) => pv + cv, 0);
     var rightAvg = Math.round(rightSum/rightAnalyser.frequencyBinCount);
+    if (rightAvg > rightMax) rightMax = rightAvg;
+    rightAvg = (rightAvg / rightMax) * 256;
     canvasCtx.beginPath();
     canvasCtx.moveTo(unit(rightAvg)+2, unit(128 + 64));
     canvasCtx.lineTo(lowX, lowY);
@@ -95,6 +112,8 @@ function visualize() {
     leftAnalyser.getByteFrequencyData(leftDataArray);
     var leftSum = leftDataArray.reduce((pv, cv) => pv + cv, 0);
     var leftAvg = Math.round(leftSum/leftAnalyser.frequencyBinCount);
+    if (leftAvg > leftMax) leftMax = leftAvg;
+    leftAvg = (leftAvg / leftMax) * 256;
     canvasCtx.beginPath();
     canvasCtx.moveTo(unit(leftAvg)+2, unit(128));
     canvasCtx.lineTo(highX, highY);
@@ -107,16 +126,44 @@ function visualize() {
     canvasCtx.stroke()
 }
 
-source.connect(freqAnalyser);
-freqAnalyser.connect(splitter);
-splitter.connect(leftAnalyser, 0);
-splitter.connect(rightAnalyser, 1);
-leftAnalyser.connect(merger, 0, 0);
-rightAnalyser.connect(merger, 0, 1);
-merger.connect(audioCtx.destination);
+function connectChain(source) {
+    source.connect(freqAnalyser);
+    freqAnalyser.connect(splitter);
+    splitter.connect(leftAnalyser, 0);
+    splitter.connect(rightAnalyser, 1);
+    leftAnalyser.connect(merger, 0, 0);
+    rightAnalyser.connect(merger, 0, 1);
+    merger.connect(audioCtx.destination);
+}
+
+// Get microphone audio stream.
+function useMicStream() {
+    var stream = new Promise((resolve, reject) => {
+        navigator.getUserMedia(
+                {audio: true},
+                (stream) => resolve(stream),
+                (err) => reject(stream)
+        );
+    })
+
+    stream
+        // Create web audio source from mic stream.
+        .then((stream) => audioCtx.createMediaStreamSource(stream))
+        // Connect that source to the analyser.
+        .then(connectChain)
+        // Start animation.
+        .then(visualize);
+}
+
+function useMp3() {
+    var audioElement = document.getElementById("mp3");
+    var source = audioCtx.createMediaElementSource(audioElement);
+    connectChain(source);
+}
 
 setInterval(visualize, 1000/24);
+useMp3();
+//useMicStream();
 
-//visualize();
-// TODO: Fix exact placement.
-// TODO: Tune frequencies.
+// Ideas:
+// Accentuate changes!
