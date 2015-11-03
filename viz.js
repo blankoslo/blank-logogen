@@ -56,74 +56,87 @@ var W = canvas.width;
 var H = canvas.height;
 var unitSz = 2;
 var unit = (len) => len * unitSz;
+var color = [239, 74, 95]
+var lvlColor = [235, 43, 56]
 
 // Visualization
-//var lowX = unit(130);
-//var highX = unit(130);
 var leftMax = 128;
 var rightMax = 128;
 function visualize() {
-    //requestAnimationFrame(visualize);
 
     // Clear canvas from last tick.
     canvasCtx.clearRect(0, 0, W, H);
 
     // Draw the base logo.
-    canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
+    canvasCtx.fillStyle = 'rgb('+color[0]+','+color[1]+','+color[2]+')';
     canvasCtx.lineWidth = unit(4);
-    canvasCtx.strokeRect(2, unit(128), unit(256)+2, unit(64));
+    canvasCtx.fillRect(2, unit(128), unit(256)+2, unit(64));
 
+    // Get audio data.
     freqAnalyser.getByteFrequencyData(freqDataArray);
+    leftAnalyser.getByteFrequencyData(leftDataArray);
+    rightAnalyser.getByteFrequencyData(rightDataArray);
 
     // Low freq viz
     var lowFreq = freqCutoff('band', 0, 100);
+
+    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.75+')';
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128 + 64));
     var lowX = unit(130) + unit(Math.random() * 128 - 64)
-    //lowX += (Math.random()*20)-10
     var lowY = Math.min(H, unit(128+64) + lowFreq * (255/(H-unit(128+64))));
     canvasCtx.lineTo(lowX, lowY);
+    var rightSum = rightDataArray.reduce((pv, cv) => pv + cv, 0);
+    var rightAvg = Math.round(rightSum/rightAnalyser.frequencyBinCount);
+    if (rightAvg > rightMax) rightMax = rightAvg;
+    rightAvg = (rightAvg / rightMax) * 256;
+    canvasCtx.lineTo(unit(rightAvg)+2, unit(128 + 64));
+    canvasCtx.fill();
+    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.5+')';
+    canvasCtx.moveTo(unit(rightAvg)+2, unit(128 + 64));
+    canvasCtx.lineTo(lowX, lowY);
     canvasCtx.lineTo(unit(256)+4, unit(128) + unit(64));
-    canvasCtx.stroke();
+    canvasCtx.fill();
+    //canvasCtx.lineTo(lowX, lowY);
+    //canvasCtx.stroke()
+    //canvasCtx.lineTo(unit(256)+4, unit(128) + unit(64));
    
     // High freq viz
     var highFreq = freqCutoff('high', 16000);
+
+    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.5+')';
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128));
     var highX = unit(130) + unit(Math.random() * 128 - 64)
     //highX += (Math.random()*20)-10
     var highY = Math.min(unit(128), Math.max(2, unit(128)-highFreq*(255/(unit(128)))));
     canvasCtx.lineTo(highX, highY);
-    canvasCtx.lineTo(unit(256)+4, unit(128));
-    canvasCtx.stroke(); 
-
-    // Right level viz
-    rightAnalyser.getByteFrequencyData(rightDataArray);
-    var rightSum = rightDataArray.reduce((pv, cv) => pv + cv, 0);
-    var rightAvg = Math.round(rightSum/rightAnalyser.frequencyBinCount);
-    if (rightAvg > rightMax) rightMax = rightAvg;
-    rightAvg = (rightAvg / rightMax) * 256;
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(unit(rightAvg)+2, unit(128 + 64));
-    canvasCtx.lineTo(lowX, lowY);
-    canvasCtx.stroke()
-
-    // Left level viz
-    leftAnalyser.getByteFrequencyData(leftDataArray);
     var leftSum = leftDataArray.reduce((pv, cv) => pv + cv, 0);
     var leftAvg = Math.round(leftSum/leftAnalyser.frequencyBinCount);
     if (leftAvg > leftMax) leftMax = leftAvg;
     leftAvg = (leftAvg / leftMax) * 256;
-    canvasCtx.beginPath();
+    canvasCtx.lineTo(unit(leftAvg)+2, unit(128));
+    //canvasCtx.lineTo(highX, highY);
+    canvasCtx.fill();
+    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.3+')';
     canvasCtx.moveTo(unit(leftAvg)+2, unit(128));
     canvasCtx.lineTo(highX, highY);
-    canvasCtx.stroke()
+    canvasCtx.lineTo(unit(256)+4, unit(128));
+    canvasCtx.fill();
+
+    //canvasCtx.lineTo(unit(256)+4, unit(128));
+    //canvasCtx.stroke(); 
 
     // Between levels
+    canvasCtx.fillStyle = 'rgb('+lvlColor[0]+','+lvlColor[1]+','+lvlColor[2]+')';
     canvasCtx.beginPath();
-    canvasCtx.moveTo(unit(rightAvg)+2, unit(128 + 64));
+    canvasCtx.moveTo(2, unit(128 + 64));
+    canvasCtx.lineTo(unit(rightAvg)+2, unit(128 + 64));
     canvasCtx.lineTo(unit(leftAvg)+2, unit(128));
-    canvasCtx.stroke()
+    canvasCtx.lineTo(2, unit(128));
+    canvasCtx.fill()
+    
+    requestAnimationFrame(visualize);
 }
 
 function connectChain(source) {
@@ -161,7 +174,8 @@ function useMp3() {
     connectChain(source);
 }
 
-setInterval(visualize, 1000/24);
+//setInterval(visualize, 1000/24);
+visualize();
 useMp3();
 //useMicStream();
 
