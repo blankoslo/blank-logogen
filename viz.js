@@ -56,13 +56,13 @@ var W = canvas.width;
 var H = canvas.height;
 var unitSz = 2;
 var unit = (len) => len * unitSz;
+
 // Visualization
 var leftMax = 128;
 var rightMax = 128;
 
 var lowFreqMax = 1;
 var highFreqMax = 1;
-
 function visualize() {
     // Clear canvas from last tick.
     canvasCtx.clearRect(0, 0, W, H);
@@ -168,7 +168,7 @@ function useMicStream() {
         // Connect that source to the analyser.
         .then(connectChain)
         // Start animation.
-        .then(visualize);
+        .then(setInterval(visualize, 1000/24));
 }
 
 function useMp3() {
@@ -180,9 +180,9 @@ function useMp3() {
     leftAnalyser.connect(merger, 0, 0);
     rightAnalyser.connect(merger, 0, 1);
     merger.connect(audioCtx.destination);
+    setInterval(visualize, 1000/24);
 }
 
-setInterval(visualize, 1000/24);
 //visualize();
 //useMp3();
 useMicStream();
