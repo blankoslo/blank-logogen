@@ -56,20 +56,20 @@ var W = canvas.width;
 var H = canvas.height;
 var unitSz = 2;
 var unit = (len) => len * unitSz;
-var color = [239, 74, 95]
-var lvlColor = [235, 43, 56]
-
 // Visualization
 var leftMax = 128;
 var rightMax = 128;
-function visualize() {
 
+var lowFreqMax = 1;
+var highFreqMax = 1;
+
+function visualize() {
     // Clear canvas from last tick.
     canvasCtx.clearRect(0, 0, W, H);
 
     // Draw the base logo.
-    canvasCtx.fillStyle = 'rgb('+color[0]+','+color[1]+','+color[2]+')';
-    canvasCtx.lineWidth = unit(4);
+    canvasCtx.fillStyle = 'rgb(239, 74, 95)';
+    //canvasCtx.lineWidth = unit(4);
     canvasCtx.fillRect(2, unit(128), unit(256)+2, unit(64));
 
     // Get audio data.
@@ -78,57 +78,63 @@ function visualize() {
     rightAnalyser.getByteFrequencyData(rightDataArray);
 
     // Low freq viz
-    var lowFreq = freqCutoff('band', 0, 100);
+    var lowFreq = freqCutoff('low', 100);
+    // Usually high saturation in low frequencies, tune this a bit.
+    var lowFreq = Math.max(0, lowFreq - 100) + 0.1 * lowFreq;
+    if (lowFreq > lowFreqMax) {
+        lowFreqMax = lowFreq;
+    }
+    lowFreq = 255 * (lowFreq / lowFreqMax);
 
-    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.75+')';
+    canvasCtx.fillStyle = 'rgb(243, 119, 135)';
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128 + 64));
     var lowX = unit(130) + unit(Math.random() * 128 - 64)
-    var lowY = Math.min(H, unit(128+64) + lowFreq * (255/(H-unit(128+64))));
+    var lowY = Math.min(H, unit(128+64) + (lowFreq / 255) * (H-unit(128+64)));
     canvasCtx.lineTo(lowX, lowY);
     var rightSum = rightDataArray.reduce((pv, cv) => pv + cv, 0);
     var rightAvg = Math.round(rightSum/rightAnalyser.frequencyBinCount);
     if (rightAvg > rightMax) rightMax = rightAvg;
-    rightAvg = (rightAvg / rightMax) * 256;
+    rightAvg = (rightAvg / rightMax) * 200;//256;
     canvasCtx.lineTo(unit(rightAvg)+2, unit(128 + 64));
     canvasCtx.fill();
-    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.5+')';
+
+    canvasCtx.beginPath();
+    canvasCtx.fillStyle = 'rgb(247, 164, 175)';
     canvasCtx.moveTo(unit(rightAvg)+2, unit(128 + 64));
     canvasCtx.lineTo(lowX, lowY);
     canvasCtx.lineTo(unit(256)+4, unit(128) + unit(64));
     canvasCtx.fill();
-    //canvasCtx.lineTo(lowX, lowY);
-    //canvasCtx.stroke()
-    //canvasCtx.lineTo(unit(256)+4, unit(128) + unit(64));
    
     // High freq viz
     var highFreq = freqCutoff('high', 16000);
+    if (highFreq > highFreqMax) {
+        highFreqMax = highFreq;
+    }
+    highFreq = 255 * (highFreq / highFreqMax);
 
-    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.5+')';
+    canvasCtx.fillStyle = 'rgb(247, 164, 175)';
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128));
     var highX = unit(130) + unit(Math.random() * 128 - 64)
-    //highX += (Math.random()*20)-10
-    var highY = Math.min(unit(128), Math.max(2, unit(128)-highFreq*(255/(unit(128)))));
+    var highY = Math.min(unit(128), Math.max(2, ((unit(128)-highFreq) / 255) * unit(128)));
     canvasCtx.lineTo(highX, highY);
     var leftSum = leftDataArray.reduce((pv, cv) => pv + cv, 0);
     var leftAvg = Math.round(leftSum/leftAnalyser.frequencyBinCount);
     if (leftAvg > leftMax) leftMax = leftAvg;
-    leftAvg = (leftAvg / leftMax) * 256;
+    leftAvg = (leftAvg / leftMax) * 200;//256;
     canvasCtx.lineTo(unit(leftAvg)+2, unit(128));
-    //canvasCtx.lineTo(highX, highY);
     canvasCtx.fill();
-    canvasCtx.fillStyle = 'rgba('+color[0]+','+color[1]+','+color[2]+','+0.3+')';
+
+    canvasCtx.beginPath();
+    canvasCtx.fillStyle = 'rgb(250,200,207)';
     canvasCtx.moveTo(unit(leftAvg)+2, unit(128));
     canvasCtx.lineTo(highX, highY);
     canvasCtx.lineTo(unit(256)+4, unit(128));
     canvasCtx.fill();
 
-    //canvasCtx.lineTo(unit(256)+4, unit(128));
-    //canvasCtx.stroke(); 
-
-    // Between levels
-    canvasCtx.fillStyle = 'rgb('+lvlColor[0]+','+lvlColor[1]+','+lvlColor[2]+')';
+    // Levels
+    canvasCtx.fillStyle = 'rgb(235, 43, 56)';
     canvasCtx.beginPath();
     canvasCtx.moveTo(2, unit(128 + 64));
     canvasCtx.lineTo(unit(rightAvg)+2, unit(128 + 64));
@@ -136,7 +142,7 @@ function visualize() {
     canvasCtx.lineTo(2, unit(128));
     canvasCtx.fill()
     
-    requestAnimationFrame(visualize);
+    //requestAnimationFrame(visualize);
 }
 
 function connectChain(source) {
@@ -144,9 +150,6 @@ function connectChain(source) {
     freqAnalyser.connect(splitter);
     splitter.connect(leftAnalyser, 0);
     splitter.connect(rightAnalyser, 1);
-    leftAnalyser.connect(merger, 0, 0);
-    rightAnalyser.connect(merger, 0, 1);
-    merger.connect(audioCtx.destination);
 }
 
 // Get microphone audio stream.
@@ -172,12 +175,14 @@ function useMp3() {
     var audioElement = document.getElementById("mp3");
     var source = audioCtx.createMediaElementSource(audioElement);
     connectChain(source);
+
+    // Connect to the output as well.
+    leftAnalyser.connect(merger, 0, 0);
+    rightAnalyser.connect(merger, 0, 1);
+    merger.connect(audioCtx.destination);
 }
 
-//setInterval(visualize, 1000/24);
-visualize();
-useMp3();
-//useMicStream();
-
-// Ideas:
-// Accentuate changes!
+setInterval(visualize, 1000/24);
+//visualize();
+//useMp3();
+useMicStream();
