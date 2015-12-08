@@ -37,6 +37,7 @@ window.onload = function() {
       +'    <br>'
       +'    <br>'
       +'    <a id="logo-link"></a>'
+      +'    <br>'
       +'    <img id="logo" width="512"></img>'
       +'</div>';
 

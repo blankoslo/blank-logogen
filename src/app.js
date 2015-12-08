@@ -4,7 +4,8 @@ var cors = require('cors');
 var app = express();
 
 app.set('view engine', 'hbs');
-app.use('/static', express.static('./static'));
+app.set('views', './src/views');
+app.use('/static', express.static('./src/static'));
 app.use(cors());
 app.options('*', cors());
 
