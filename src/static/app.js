@@ -31,7 +31,7 @@ window.onload = function() {
       +'            <input id="seed" name="seed" type="text" class="mdl-textfield__input">'
       +'        </div>'
       +'    </div>'
-      +'    <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" onclick="generate()">'
+      +'    <button id="generateButton" class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent">'
       +'        Generer'
       +'    </button>'
       +'    <br>'
@@ -42,4 +42,5 @@ window.onload = function() {
       +'</div>';
 
     componentHandler.upgradeDom();
+    document.getElementById('generateButton').addEventListener('click', generate);
 };
